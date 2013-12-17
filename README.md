@@ -3,13 +3,13 @@ rvuset
 
 REVIVE USB keycode setter
 
-g—p–@
+ä½¿ç”¨æ³•
 
 ```
 rvuset <ini file>
 ```
 
-usageƒR[ƒh•\
+usageã‚³ãƒ¼ãƒ‰è¡¨
 ```
 	00	Reserved (no event indicated)
 	01	Keyboard ErrorRollOver
