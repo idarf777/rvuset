@@ -5,6 +5,10 @@
 
 #include "stdafx.h"
 #include <iostream>
+#include <sstream>
+#include <string>
+#include <locale>
+#include <algorithm> 
 
 #include <windows.h>
 extern "C" {
@@ -126,25 +130,90 @@ bool loadIniFile( BYTE pImg[ OUTPUT_SIZE ], LPCTSTR pFilename )
 
 	TCHAR szApp[ 8 ];
 	TCHAR szValue[ 3 ];
-	TCHAR szMod[ 3 ];
+	TCHAR szMod[ 256 ];
 	for ( int pin=0; pin<N_PIN; pin++ )
 	{
+		BYTE mode = -1;
+		BYTE value = 0;
+		BYTE modify = 0;
+		TCHAR* p;
 		BYTE* cur = &pImg[ pin*3+2 ];
 		wsprintf( szApp, _T("PIN%d"), pin+1 );
-		int mode = (int)GetPrivateProfileInt( szApp, _T("MODE"), -1, pFilename );
+		
+		mode = (int)GetPrivateProfileInt( szApp, _T("MODE"), -1, pFilename );
+		
+		if ( GetPrivateProfileString( szApp, _T("VALUE"), _T(""), szValue, ARRAYSIZE(szValue), pFilename ) > 0 )
+		{
+			errno = 0;
+			value = (BYTE)_tcstol( szValue, &p, 16 );
+			if ( errno != 0 )
+				return false;
+		}
+		else
+		{
+			mode = -1;
+		}
+
+		if ( GetPrivateProfileString( szApp, _T("MODIFIER"), _T(""), szMod, ARRAYSIZE(szMod), pFilename ) > 0 )
+		{
+			switch ( mode )
+			{
+			case 0:
+				//　マウス設定
+				errno = 0;
+				modify = (BYTE)_tcstol( szMod, &p, 16 );
+				if ( errno != 0 )
+					return false;
+				break;
+			case 1:
+				// キーボード設定
+				{
+					wistringstream iss( szMod );
+					wstring t;
+					while ( getline( iss, t, L' ' ) )
+					{
+						transform( t.begin(), t.end(), t.begin(), toupper );
+						if ( t == L"LEFT_CTRL" )
+						{
+							modify |= 1;
+						}
+						else if ( t == L"LEFT_SHIFT" )
+						{
+							modify |= 2;
+						}
+						else if ( t == L"LEFT_ALT" )
+						{
+							modify |= 4;
+						}
+						else if ( t == L"LEFT_GUI" )
+						{
+							modify |= 8;
+						}
+						else if ( t == L"RIGHT_CTRL" )
+						{
+							modify |= 16;
+						}
+						else if ( t == L"RIGHT_SHIFT" )
+						{
+							modify |= 32;
+						}
+						else if ( t == L"RIGHT_ALT" )
+						{
+							modify |= 64;
+						}
+						else if ( t == L"RIGHT_GUI" )
+						{
+							modify |= 128;
+						}
+					}
+				}
+				break;
+			}
+
+		}
 		cur[ 0 ] = mode;
-		if ( mode < 0 )
-			continue;
-		GetPrivateProfileString( szApp, _T("VALUE"), _T(""), szValue, ARRAYSIZE(szValue), pFilename );
-		GetPrivateProfileString( szApp, _T("MODIFIER"), _T(""), szMod, ARRAYSIZE(szMod), pFilename );
-		TCHAR* p;
-		errno = 0;
-		cur[ 1 ] = (BYTE)_tcstol( szValue, &p, 16 );
-		if ( errno != 0 )
-			return false;
-		cur[ 2 ] = (BYTE)_tcstol( szMod, &p, 16 );
-		if ( errno != 0 )
-			return false;
+		cur[ 1 ] = value;
+		cur[ 2 ] = modify;
 	}
 	return true;
 }
